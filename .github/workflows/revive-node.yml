@@ -13,6 +13,11 @@ on:
         required: false
         default: '1.86'
         type: string
+      job-timeout-minutes:
+        description: 'Job timeout in minutes'
+        required: false
+        default: '90'
+        type: string
       run-duration:
         description: 'Seconds to keep the node running (0 = short health check only)'
         required: false
@@ -22,7 +27,7 @@ on:
 jobs:
   run-local-node:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: ${{ inputs.job-timeout-minutes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
