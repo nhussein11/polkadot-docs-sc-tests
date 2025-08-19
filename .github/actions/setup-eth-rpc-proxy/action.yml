@@ -1,0 +1,41 @@
+name: Setup ETH-RPC Proxy
+description: Build and start the pallet-revive-eth-rpc adapter (expects revive node running)
+
+inputs:
+  polkadot-sdk-ref:
+    description: Git ref (commit/branch/tag) for polkadot-sdk
+    required: false
+    default: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+  cache-key-suffix:
+    description: Suffix to vary the cache key
+    required: false
+    default: ''
+  sdk-path:
+    description: Path to polkadot-sdk checkout
+    required: false
+    default: polkadot-sdk
+
+outputs:
+  eth-rpc-pid:
+    value: ${{ steps.start.outputs.eth_rpc_pid }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build ETH-RPC adapter
+      shell: bash
+      run: |
+        cd "${{ inputs.sdk-path }}"
+        # Ensure ref is checked out (idempotent if already on ref)
+        git checkout ${{ inputs.polkadot-sdk-ref }}
+        cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release
+
+    - name: Start ETH-RPC adapter
+      id: start
+      shell: bash
+      run: |
+        nohup "${{ inputs.sdk-path }}"/target/release/eth-rpc --dev > eth-rpc.log 2>&1 &
+        echo $! > eth-rpc.pid
+        echo "eth_rpc_pid=$(cat eth-rpc.pid)" >> $GITHUB_OUTPUT
+
+

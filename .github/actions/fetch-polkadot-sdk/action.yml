@@ -1,0 +1,49 @@
+name: Fetch Polkadot SDK
+description: Clone (or update) polkadot-sdk at a specific ref and restore build cache
+
+inputs:
+  ref:
+    description: Git ref (commit/branch/tag) for polkadot-sdk
+    required: false
+    default: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+  path:
+    description: Directory to place the repository
+    required: false
+    default: polkadot-sdk
+  cache-key-suffix:
+    description: Suffix to vary the cache key
+    required: false
+    default: ''
+
+outputs:
+  path:
+    description: Path to the polkadot-sdk checkout
+    value: ${{ steps.out.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Clone or update
+      shell: bash
+      run: |
+        if [ -d "${{ inputs.path }}" ]; then
+          cd "${{ inputs.path }}"
+          git fetch --all --tags --prune
+          git checkout ${{ inputs.ref }}
+        else
+          git clone https://github.com/paritytech/polkadot-sdk.git "${{ inputs.path }}"
+          cd "${{ inputs.path }}"
+          git checkout ${{ inputs.ref }}
+        fi
+
+    - name: Restore target cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.path }}/target
+        key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.ref }}-${{ inputs.cache-key-suffix }}
+
+    - id: out
+      shell: bash
+      run: echo "path=${{ inputs.path }}" >> $GITHUB_OUTPUT
+
+

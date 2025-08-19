@@ -1,0 +1,46 @@
+name: Revive Node
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup dev deps
+        uses: ./.github/actions/setup-dev-deps
+
+      - name: Fetch Polkadot SDK
+        id: fetch
+        uses: ./.github/actions/fetch-polkadot-sdk
+        with:
+          ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+
+      - name: Setup Revive Dev Node
+        uses: ./.github/actions/setup-revive-node
+        with:
+          polkadot-sdk-ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+          sdk-path: ${{ steps.fetch.outputs.path }}
+
+      - name: Setup ETH-RPC proxy
+        uses: ./.github/actions/setup-eth-rpc-proxy
+        with:
+          polkadot-sdk-ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+          sdk-path: ${{ steps.fetch.outputs.path }}
+
+      - name: Teardown
+        if: always()
+        uses: ./.github/actions/teardown-revive-node
+
+

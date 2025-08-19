@@ -1,0 +1,41 @@
+name: Setup Revive Node
+description: Clone Polkadot SDK (pinned), build revive-dev-node, start it
+
+inputs:
+  polkadot-sdk-ref:
+    description: Git ref (commit/branch/tag) for polkadot-sdk
+    required: false
+    default: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+  cache-key-suffix:
+    description: Suffix to vary the cache key
+    required: false
+    default: ''
+  sdk-path:
+    description: Path to polkadot-sdk checkout
+    required: false
+    default: polkadot-sdk
+
+outputs:
+  revive-pid:
+    value: ${{ steps.start.outputs.revive_pid }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build Revive node
+      shell: bash
+      run: |
+        cd "${{ inputs.sdk-path }}"
+        # Ensure ref is checked out (idempotent if already on ref)
+        git checkout ${{ inputs.polkadot-sdk-ref }}
+        cargo build -p revive-dev-node --bin revive-dev-node --release
+
+    - name: Start processes
+      id: start
+      shell: bash
+      run: |
+        nohup "${{ inputs.sdk-path }}"/target/release/revive-dev-node --dev > revive-node.log 2>&1 &
+        echo $! > revive-node.pid
+        echo "revive_pid=$(cat revive-node.pid)" >> $GITHUB_OUTPUT
+
+
