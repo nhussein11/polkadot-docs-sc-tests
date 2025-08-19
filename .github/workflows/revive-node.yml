@@ -1,43 +1,84 @@
-name: Revive Node
+name: Revive Dev Node (Manual)
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch:
+    inputs:
+      polkadot-sdk-ref:
+        description: 'Polkadot SDK git ref (commit/branch/tag)'
+        required: false
+        default: '8e2b6f742a38bb13688e12abacded0aab2dbbb23'
+        type: string
+      rust-version:
+        description: 'Rust toolchain version'
+        required: false
+        default: '1.86'
+        type: string
+      run-duration:
+        description: 'Seconds to keep the node running (0 = short health check only)'
+        required: false
+        default: '60'
+        type: string
 
 jobs:
-  build-and-test:
+  run-local-node:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup dev deps
-        uses: ./.github/actions/setup-dev-deps
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          rust-version: ${{ inputs.rust-version }}
 
       - name: Fetch Polkadot SDK
         id: fetch
         uses: ./.github/actions/fetch-polkadot-sdk
         with:
-          ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+          ref: ${{ inputs.polkadot-sdk-ref }}
 
-      - name: Setup Revive Dev Node
+      - name: Start Revive node
+        id: revive
         uses: ./.github/actions/setup-revive-node
         with:
-          polkadot-sdk-ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+          polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
           sdk-path: ${{ steps.fetch.outputs.path }}
 
-      - name: Setup ETH-RPC proxy
+      - name: Start ETH-RPC proxy
+        id: eth
         uses: ./.github/actions/setup-eth-rpc-proxy
         with:
-          polkadot-sdk-ref: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+          polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
           sdk-path: ${{ steps.fetch.outputs.path }}
+
+      - name: Verify ETH-RPC readiness (http://127.0.0.1:8545)
+        shell: bash
+        run: |
+          for i in {1..20}; do
+            if curl -sS -H 'Content-Type: application/json' \
+              --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+              http://127.0.0.1:8545 | grep -q 'result'; then
+              echo "✅ ETH-RPC is responding"; exit 0; fi
+            echo "⏳ Waiting for ETH-RPC... ($i)"; sleep 2;
+          done
+          echo "❌ ETH-RPC did not become ready"; exit 1
+
+      - name: Health window
+        shell: bash
+        run: |
+          DURATION=${{ inputs.run-duration }}
+          if [ "$DURATION" = "0" ]; then echo "Skipping health window"; exit 0; fi
+          echo "Monitoring for $DURATION seconds..."
+          end=$(( $(date +%s) + DURATION ))
+          while [ $(date +%s) -lt $end ]; do
+            if [ -f revive-node.pid ] && kill -0 $(cat revive-node.pid) 2>/dev/null; then :; else
+              echo "❌ revive-dev-node process exited"; exit 1; fi
+            if [ -f eth-rpc.pid ] && kill -0 $(cat eth-rpc.pid) 2>/dev/null; then :; else
+              echo "❌ eth-rpc process exited"; exit 1; fi
+            sleep 5
+          done
+          echo "✅ Health window completed"
 
       - name: Teardown
         if: always()
