@@ -69,14 +69,6 @@ runs:
           cargo build --locked -p revive-dev-node --bin revive-dev-node --release
         fi
 
-    - name: Save target cache
-      if: always()
-      continue-on-error: true
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ inputs.sdk-path }}/target
-        key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.polkadot-sdk-ref }}-${{ inputs.cache-key-suffix }}
-
     - name: Start processes
       id: start
       shell: bash

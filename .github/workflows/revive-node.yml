@@ -60,6 +60,14 @@ jobs:
           sdk-path: ${{ steps.fetch.outputs.path }}
           cache-key-suffix: ${{ inputs.rust-version }}
 
+      - name: Save target cache (once)
+        if: always() && steps.fetch.outputs.target_cache_hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.fetch.outputs.path }}/target
+          key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}
+
       - name: Verify ETH-RPC readiness (http://127.0.0.1:8545)
         shell: bash
         run: |

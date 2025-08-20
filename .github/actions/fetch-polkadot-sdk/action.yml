@@ -19,6 +19,9 @@ outputs:
   path:
     description: Path to the polkadot-sdk checkout
     value: ${{ steps.out.outputs.path }}
+  target_cache_hit:
+    description: 'Whether target cache was hit'
+    value: ${{ steps.restore_target_cache.outputs.cache-hit }}
 
 runs:
   using: composite
@@ -36,7 +39,8 @@ runs:
           git checkout ${{ inputs.ref }}
         fi
 
-    - name: Restore target cache
+    - id: restore_target_cache
+      name: Restore target cache
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}/target
