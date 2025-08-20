@@ -20,8 +20,8 @@ outputs:
     description: Path to the polkadot-sdk checkout
     value: ${{ steps.out.outputs.path }}
   target_cache_hit:
-    description: 'Whether target cache was hit'
-    value: ${{ steps.restore_target_cache.outputs.cache-hit }}
+    description: 'Whether compiled dependencies cache was hit'
+    value: ${{ steps.restore_compiled_deps.outputs.cache-hit }}
 
 runs:
   using: composite
@@ -39,15 +39,34 @@ runs:
           git checkout ${{ inputs.ref }}
         fi
 
-    - id: restore_target_cache
-      name: Restore target cache
+    - name: Cache Cargo dependencies
       uses: actions/cache@v4
       with:
-        path: ${{ inputs.path }}/target
-        key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.ref }}-${{ inputs.cache-key-suffix }}
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+        key: ${{ runner.os }}-cargo-deps-${{ hashFiles('polkadot-sdk/**/Cargo.lock') }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
-          ${{ runner.os }}-polkadot-sdk-target-${{ inputs.ref }}-
-          ${{ runner.os }}-polkadot-sdk-target-
+          ${{ runner.os }}-cargo-deps-
+
+    - id: restore_compiled_deps
+      name: Cache compiled dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.path }}/target/release/deps
+        key: ${{ runner.os }}-deps-${{ hashFiles('polkadot-sdk/**/Cargo.lock') }}-${{ inputs.ref }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-deps-${{ hashFiles('polkadot-sdk/**/Cargo.lock') }}-
+          ${{ runner.os }}-deps-
+
+    - name: Cache target incremental
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.path }}/target/release/incremental
+        key: ${{ runner.os }}-incremental-${{ inputs.ref }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-incremental-
 
     - id: out
       shell: bash

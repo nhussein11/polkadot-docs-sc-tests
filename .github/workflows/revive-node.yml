@@ -1,25 +1,25 @@
-name: Revive Dev Node (Manual)
+name: Revive Dev Node (Optimized)
 
 on:
   workflow_dispatch:
     inputs:
       polkadot-sdk-ref:
-        description: 'Polkadot SDK git ref (commit/branch/tag)'
+        description: 'Polkadot SDK git ref'
         required: false
         default: '8e2b6f742a38bb13688e12abacded0aab2dbbb23'
         type: string
+      use-prebuilt:
+        description: 'Use prebuilt binaries if available'
+        required: false
+        default: true
+        type: boolean
       rust-version:
         description: 'Rust toolchain version'
         required: false
         default: '1.86'
         type: string
-      job-timeout-minutes:
-        description: 'Job timeout in minutes'
-        required: false
-        default: '90'
-        type: string
       run-duration:
-        description: 'Seconds to keep the node running (0 = short health check only)'
+        description: 'Seconds to keep the node running'
         required: false
         default: '60'
         type: string
@@ -27,46 +27,62 @@ on:
 jobs:
   run-local-node:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ fromJSON(inputs.job-timeout-minutes) }}
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
+      - name: Try download prebuilt binaries
+        id: prebuilt
+        if: inputs.use-prebuilt
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: revive-binaries-${{ inputs.polkadot-sdk-ref }}
+          path: ./prebuilt-binaries
+
+      - name: Setup Rust (only if building)
+        if: steps.prebuilt.outcome == 'failure' || !inputs.use-prebuilt
         uses: ./.github/actions/setup-rust
         with:
           rust-version: ${{ inputs.rust-version }}
 
-      - name: Fetch Polkadot SDK
+      - name: Fetch SDK (only if building)
         id: fetch
+        if: steps.prebuilt.outcome == 'failure' || !inputs.use-prebuilt
         uses: ./.github/actions/fetch-polkadot-sdk
         with:
           ref: ${{ inputs.polkadot-sdk-ref }}
           cache-key-suffix: ${{ inputs.rust-version }}
 
+      - name: Build binaries (fallback)
+        if: steps.prebuilt.outcome == 'failure' || !inputs.use-prebuilt
+        run: |
+          START_TIME=$(date +%s)
+          cd ${{ steps.fetch.outputs.path }}
+          cargo build --locked --release --jobs $(nproc) \
+            -p revive-dev-node --bin revive-dev-node \
+            -p pallet-revive-eth-rpc --bin eth-rpc
+          mkdir -p ../prebuilt-binaries
+          cp target/release/{revive-dev-node,eth-rpc} ../prebuilt-binaries/
+          END_TIME=$(date +%s)
+          echo "Build took $((END_TIME - START_TIME)) seconds"
+
+      - name: Setup binaries
+        run: |
+          mkdir -p ./runtime-binaries
+          chmod +x ./prebuilt-binaries/*
+          cp ./prebuilt-binaries/* ./runtime-binaries/
+
       - name: Start Revive node
-        id: revive
-        uses: ./.github/actions/setup-revive-node
-        with:
-          polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
-          sdk-path: ${{ steps.fetch.outputs.path }}
-          cache-key-suffix: ${{ inputs.rust-version }}
+        run: |
+          nohup ./runtime-binaries/revive-dev-node --dev > revive-node.log 2>&1 &
+          echo $! > revive-node.pid
 
       - name: Start ETH-RPC proxy
-        id: eth
-        uses: ./.github/actions/setup-eth-rpc-proxy
-        with:
-          polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
-          sdk-path: ${{ steps.fetch.outputs.path }}
-          cache-key-suffix: ${{ inputs.rust-version }}
-
-      - name: Save target cache (once)
-        if: always() && steps.fetch.outputs.target_cache_hit != 'true'
-        continue-on-error: true
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ steps.fetch.outputs.path }}/target
-          key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}
+        run: |
+          nohup ./runtime-binaries/eth-rpc --dev > eth-rpc.log 2>&1 &
+          echo $! > eth-rpc.pid
 
       - name: Verify ETH-RPC readiness (http://127.0.0.1:8545)
         shell: bash

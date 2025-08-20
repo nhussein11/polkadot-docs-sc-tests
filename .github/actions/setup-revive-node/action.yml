@@ -38,6 +38,20 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Check for cached binary
+      shell: bash
+      run: |
+        set -euo pipefail
+        BINARY_CACHE_KEY="revive-node-${{ inputs.polkadot-sdk-ref }}-${{ runner.arch }}"
+        CACHE_DIR="$HOME/.cache/revive-binaries/$BINARY_CACHE_KEY"
+        if [ -f "$CACHE_DIR/revive-dev-node" ]; then
+          echo "Using cached binary from $CACHE_DIR"
+          mkdir -p "${{ inputs.sdk-path }}/target/release"
+          cp "$CACHE_DIR/revive-dev-node" "${{ inputs.sdk-path }}/target/release/"
+          chmod +x "${{ inputs.sdk-path }}/target/release/revive-dev-node"
+          echo "BINARY_CACHED=true" >> $GITHUB_ENV
+        fi
+
     - name: Prepare revive-dev-node (prebuilt or build)
       shell: bash
       run: |
@@ -49,6 +63,10 @@ runs:
         PREBUILT_SRC="$BIN_ROOT/$REF/$ARCH/revive-dev-node"
         DEST_DIR="$SDK_PATH/target/release"
         mkdir -p "$DEST_DIR"
+        if [ -f "$DEST_DIR/revive-dev-node" ]; then
+          echo "revive-dev-node already present, skipping build/copy"
+          exit 0
+        fi
         if [ "${{ inputs.use-prebuilt }}" = "true" ]; then
           if [ -f "$PREBUILT_SRC" ]; then
             echo "Using prebuilt revive-dev-node from $PREBUILT_SRC"
