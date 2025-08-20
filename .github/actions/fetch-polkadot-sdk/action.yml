@@ -41,6 +41,9 @@ runs:
       with:
         path: ${{ inputs.path }}/target
         key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.ref }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ runner.os }}-polkadot-sdk-target-${{ inputs.ref }}-
+          ${{ runner.os }}-polkadot-sdk-target-
 
     - id: out
       shell: bash

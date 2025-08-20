@@ -42,6 +42,7 @@ jobs:
         uses: ./.github/actions/fetch-polkadot-sdk
         with:
           ref: ${{ inputs.polkadot-sdk-ref }}
+          cache-key-suffix: ${{ inputs.rust-version }}
 
       - name: Start Revive node
         id: revive
@@ -49,6 +50,7 @@ jobs:
         with:
           polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
           sdk-path: ${{ steps.fetch.outputs.path }}
+          cache-key-suffix: ${{ inputs.rust-version }}
 
       - name: Start ETH-RPC proxy
         id: eth
@@ -56,6 +58,7 @@ jobs:
         with:
           polkadot-sdk-ref: ${{ inputs.polkadot-sdk-ref }}
           sdk-path: ${{ steps.fetch.outputs.path }}
+          cache-key-suffix: ${{ inputs.rust-version }}
 
       - name: Verify ETH-RPC readiness (http://127.0.0.1:8545)
         shell: bash

@@ -14,6 +14,22 @@ inputs:
     description: Path to polkadot-sdk checkout
     required: false
     default: polkadot-sdk
+  use-prebuilt:
+    description: Use prebuilt binaries from binaries-root instead of building
+    required: false
+    default: 'false'
+  binaries-root:
+    description: Root folder containing prebuilt binaries (e.g., common-binaries)
+    required: false
+    default: common-binaries
+  arch:
+    description: Architecture folder name under binaries-root (e.g., linux-amd64)
+    required: false
+    default: linux-amd64
+  fail-if-missing:
+    description: If use-prebuilt is true and binaries are missing, fail instead of building
+    required: false
+    default: 'false'
 
 outputs:
   revive-pid:
@@ -22,13 +38,44 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Build Revive node
+    - name: Prepare revive-dev-node (prebuilt or build)
       shell: bash
       run: |
-        cd "${{ inputs.sdk-path }}"
-        # Ensure ref is checked out (idempotent if already on ref)
-        git checkout ${{ inputs.polkadot-sdk-ref }}
-        cargo build -p revive-dev-node --bin revive-dev-node --release
+        set -euo pipefail
+        SDK_PATH="${{ inputs.sdk-path }}"
+        BIN_ROOT="${{ inputs.binaries-root }}"
+        REF="${{ inputs.polkadot-sdk-ref }}"
+        ARCH="${{ inputs.arch }}"
+        PREBUILT_SRC="$BIN_ROOT/$REF/$ARCH/revive-dev-node"
+        DEST_DIR="$SDK_PATH/target/release"
+        mkdir -p "$DEST_DIR"
+        if [ "${{ inputs.use-prebuilt }}" = "true" ]; then
+          if [ -f "$PREBUILT_SRC" ]; then
+            echo "Using prebuilt revive-dev-node from $PREBUILT_SRC"
+            install -m 0755 "$PREBUILT_SRC" "$DEST_DIR/revive-dev-node"
+          else
+            echo "Prebuilt revive-dev-node not found at $PREBUILT_SRC"
+            if [ "${{ inputs.fail-if-missing }}" = "true" ]; then
+              exit 1
+            fi
+            echo "Falling back to build from source"
+            cd "$SDK_PATH"
+            git checkout "$REF"
+            cargo build --locked -p revive-dev-node --bin revive-dev-node --release
+          fi
+        else
+          cd "$SDK_PATH"
+          git checkout "$REF"
+          cargo build --locked -p revive-dev-node --bin revive-dev-node --release
+        fi
+
+    - name: Save target cache
+      if: always()
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.sdk-path }}/target
+        key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.polkadot-sdk-ref }}-${{ inputs.cache-key-suffix }}
 
     - name: Start processes
       id: start

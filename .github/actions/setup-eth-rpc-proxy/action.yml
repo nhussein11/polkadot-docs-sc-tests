@@ -61,13 +61,21 @@ runs:
             echo "Falling back to build from source"
             cd "$SDK_PATH"
             git checkout "$REF"
-            cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release
+            cargo build --locked -p pallet-revive-eth-rpc --bin eth-rpc --release
           fi
         else
           cd "$SDK_PATH"
           git checkout "$REF"
-          cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release
+          cargo build --locked -p pallet-revive-eth-rpc --bin eth-rpc --release
         fi
+
+    - name: Save target cache
+      if: always()
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.sdk-path }}/target
+        key: ${{ runner.os }}-polkadot-sdk-target-${{ inputs.polkadot-sdk-ref }}-${{ inputs.cache-key-suffix }}
 
     - name: Start ETH-RPC adapter
       id: start
