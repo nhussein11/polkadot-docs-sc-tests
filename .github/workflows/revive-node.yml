@@ -28,6 +28,9 @@ jobs:
   run-local-node:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # Avoid GHA artifact cache backend for sccache during runs
+      SCCACHE_GHA_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +49,20 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           rust-version: ${{ inputs.rust-version }}
+
+      - name: Validate sccache (fallback to no cache if broken)
+        if: steps.prebuilt.outcome == 'failure' || !inputs.use-prebuilt
+        shell: bash
+        run: |
+          set -e
+          if command -v sccache >/dev/null 2>&1; then
+            if ! sccache --start-server; then
+              echo "sccache failed to start, disabling compiler wrapper"
+              echo "RUSTC_WRAPPER=" >> $GITHUB_ENV
+            else
+              sccache --show-stats || true
+            fi
+          fi
 
       - name: Fetch SDK (only if building)
         id: fetch

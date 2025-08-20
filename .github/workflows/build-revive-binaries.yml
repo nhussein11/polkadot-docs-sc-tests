@@ -12,11 +12,28 @@ on:
 jobs:
   build-binaries:
     runs-on: ubuntu-latest
+    env:
+      # Force-disable GHA backend for sccache to avoid outages
+      SCCACHE_GHA_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
+
+      - name: Validate sccache (fallback to no cache if broken)
+        shell: bash
+        run: |
+          set -e
+          if command -v sccache >/dev/null 2>&1; then
+            # Try to start server with disk cache only
+            if ! sccache --start-server; then
+              echo "sccache failed to start, disabling compiler wrapper"
+              echo "RUSTC_WRAPPER=" >> $GITHUB_ENV
+            else
+              sccache --show-stats || true
+            fi
+          fi
 
       - name: Fetch SDK
         id: fetch
@@ -26,6 +43,8 @@ jobs:
 
       - name: Build binaries
         run: |
+          export SCCACHE_ERROR_LOG=$RUNNER_TEMP/sccache-error.log
+          export SCCACHE_LOG=info
           cd polkadot-sdk
           cargo build --locked --release \
             -p revive-dev-node --bin revive-dev-node \

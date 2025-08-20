@@ -61,8 +61,16 @@ runs:
     - name: Configure sccache
       shell: bash
       run: |
-        echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+        set -euo pipefail
+        mkdir -p "$RUNNER_TEMP/sccache"
+        # Always use sccache as rustc wrapper
         echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+        # Default to disk-backed cache to avoid GHA cache outages; workflows can override
+        if [ -z "${SCCACHE_GHA_ENABLED:-}" ]; then
+          echo "SCCACHE_GHA_ENABLED=false" >> $GITHUB_ENV
+        fi
+        echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> $GITHUB_ENV
+        echo "SCCACHE_CACHE_SIZE=2G" >> $GITHUB_ENV
 
     - name: Cache cargo registry and git
       id: cargo-cache
