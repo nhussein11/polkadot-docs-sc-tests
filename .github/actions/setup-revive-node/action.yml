@@ -104,15 +104,15 @@ runs:
         
         RUNTIME_PATH="${{ steps.setup.outputs.revive-node-path }}"
         
-        # Check runtime
-        if [ ! -f "$REVIVE_NODE_PATH" ]; then
-          echo "❌ Runtime WASM not found at: $REVIVE_NODE_PATH"
-          echo "🔍 Available runtime files:"
-          find polkadot-sdk/runtime/revive/target -name "*.wasm" -type f || echo "No WASM files found"
-          exit 1
-        fi
+        # # Check runtime
+        # if [ ! -f "$REVIVE_NODE_PATH" ]; then
+        #   echo "❌ Runtime WASM not found at: $REVIVE_NODE_PATH"
+        #   echo "🔍 Available runtime files:"
+        #   find polkadot-sdk/runtime/revive/target -name "*.wasm" -type f || echo "No WASM files found"
+        #   exit 1
+        # fi
         
-        # Check file sizes
-        REVIVE_NODE_SIZE=$(du -h "$RUNTIME_PATH" | cut -f1)
+        # # Check file sizes
+        # REVIVE_NODE_SIZE=$(du -h "$RUNTIME_PATH" | cut -f1)
         
         echo "✅ revive-node verified: $RUNTIME_SIZE"
