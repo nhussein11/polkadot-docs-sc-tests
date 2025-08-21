@@ -77,7 +77,7 @@ runs:
 
     - name: Build revive-dev-node
       if: steps.build-cache.outputs.cache-hit != 'true'
-      working-directory: polkadot-sdk/runtime/revive
+      working-directory: polkadot-sdk/
       shell: bash
       run: |
         echo "🔨 Building revive-dev-node..."
