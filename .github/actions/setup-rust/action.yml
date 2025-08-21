@@ -5,6 +5,7 @@ inputs:
   rust-version:
     description: 'Rust version to install'
     required: true
+    default: '1.86'
 
 outputs:
   rust-version:
