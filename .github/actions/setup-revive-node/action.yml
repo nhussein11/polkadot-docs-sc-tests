@@ -63,17 +63,12 @@ runs:
       uses: actions/cache@v4
       with:
         path: |
-          polkadot-sdk/runtime/revive/target/release
-          polkadot-sdk/runtime/revive/target/wbuild
-          polkadot-sdk/runtime/eth-rpc/target/release
-          polkadot-sdk/runtime/eth-rpc/target/wbuild
-        key: |
-          revive-node-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}${{ inputs.cache-key-suffix }}
-          eth-rpc-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}${{ inputs.cache-key-suffix }}
-
+          polkadot-sdk/target
+        key: target-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-${{ inputs.polkadot-sdk-ref }}-${{ hashFiles('polkadot-sdk/**/Cargo.lock') }}${{ inputs.cache-key-suffix }}
         restore-keys: |
-          revive-node-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}-
-          eth-rpc-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}-
+          target-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-${{ inputs.polkadot-sdk-ref }}-
+          target-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-
+          target-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Build revive-dev-node
       if: steps.build-cache.outputs.cache-hit != 'true'
