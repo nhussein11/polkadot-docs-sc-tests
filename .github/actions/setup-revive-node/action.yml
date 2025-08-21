@@ -1,98 +1,118 @@
-name: Setup Revive Node
-description: Clone Polkadot SDK (pinned), build revive-dev-node, start it
+name: "Setup Revive Node"
+description: "Clones, builds, and caches the Revive node from polkadot-smart-contracts-docs-tests repository"
 
 inputs:
+  rust-version:
+    description: "Rust version to use for building"
+    required: true
   polkadot-sdk-ref:
-    description: Git ref (commit/branch/tag) for polkadot-sdk
-    required: false
-    default: 8e2b6f742a38bb13688e12abacded0aab2dbbb23
+    description: "Git ref (commit/branch/tag) for polkadot-sdk"
+    required: true
+    default: "8e2b6f742a38bb13688e12abacded0aab2dbbb23"
   cache-key-suffix:
-    description: Suffix to vary the cache key
+    description: "Suffix for build cache key"
     required: false
-    default: ''
-  sdk-path:
-    description: Path to polkadot-sdk checkout
-    required: false
-    default: polkadot-sdk
-  use-prebuilt:
-    description: Use prebuilt binaries from binaries-root instead of building
-    required: false
-    default: 'false'
-  binaries-root:
-    description: Root folder containing prebuilt binaries (e.g., common-binaries)
-    required: false
-    default: common-binaries
-  arch:
-    description: Architecture folder name under binaries-root (e.g., linux-amd64)
-    required: false
-    default: linux-amd64
-  fail-if-missing:
-    description: If use-prebuilt is true and binaries are missing, fail instead of building
-    required: false
-    default: 'false'
+    default: ""
+
 
 outputs:
-  revive-pid:
-    value: ${{ steps.start.outputs.revive_pid }}
+  revive-node-path:
+    description: "Path to cloned revive-node"
+    value: ${{ steps.setup.outputs.revive-node-path }}
+  cache-hit:
+    description: "Whether build cache was hit"
+    value: ${{ steps.build-cache.outputs.cache-hit }}
 
 runs:
-  using: composite
+  using: "composite"
   steps:
-    - name: Check for cached binary
+    - name: Setup Rust
+      uses: ./.github/actions/setup-rust
+      with:
+        rust-version: ${{ inputs.rust-version }}
+
+    - name: Setup template and paths
+      id: setup
       shell: bash
       run: |
-        set -euo pipefail
-        BINARY_CACHE_KEY="revive-node-${{ inputs.polkadot-sdk-ref }}-${{ runner.arch }}"
-        CACHE_DIR="$HOME/.cache/revive-binaries/$BINARY_CACHE_KEY"
-        if [ -f "$CACHE_DIR/revive-dev-node" ]; then
-          echo "Using cached binary from $CACHE_DIR"
-          mkdir -p "${{ inputs.sdk-path }}/target/release"
-          cp "$CACHE_DIR/revive-dev-node" "${{ inputs.sdk-path }}/target/release/"
-          chmod +x "${{ inputs.sdk-path }}/target/release/revive-dev-node"
-          echo "BINARY_CACHED=true" >> $GITHUB_ENV
-        fi
+        REVIVE_NODE_PATH="${GITHUB_WORKSPACE}/revive-node"
+        
+        echo "revive-node-path=$REVIVE_NODE_PATH" >> $GITHUB_OUTPUT
 
-    - name: Prepare revive-dev-node (prebuilt or build)
+    - name: Clone revive-node
       shell: bash
       run: |
-        set -euo pipefail
-        SDK_PATH="${{ inputs.sdk-path }}"
-        BIN_ROOT="${{ inputs.binaries-root }}"
-        REF="${{ inputs.polkadot-sdk-ref }}"
-        ARCH="${{ inputs.arch }}"
-        PREBUILT_SRC="$BIN_ROOT/$REF/$ARCH/revive-dev-node"
-        DEST_DIR="$SDK_PATH/target/release"
-        mkdir -p "$DEST_DIR"
-        if [ -f "$DEST_DIR/revive-dev-node" ]; then
-          echo "revive-dev-node already present, skipping build/copy"
-          exit 0
+        echo "📥 Cloning revive-node from https://github.com/paritytech/polkadot-sdk (branch: ${{ inputs.polkadot-sdk-ref }})..."
+        
+        if [ -d "revive-node" ]; then
+          echo "🧹 Cleaning existing revive-node directory..."
+          rm -rf revive-node
         fi
-        if [ "${{ inputs.use-prebuilt }}" = "true" ]; then
-          if [ -f "$PREBUILT_SRC" ]; then
-            echo "Using prebuilt revive-dev-node from $PREBUILT_SRC"
-            install -m 0755 "$PREBUILT_SRC" "$DEST_DIR/revive-dev-node"
-          else
-            echo "Prebuilt revive-dev-node not found at $PREBUILT_SRC"
-            if [ "${{ inputs.fail-if-missing }}" = "true" ]; then
-              exit 1
-            fi
-            echo "Falling back to build from source"
-            cd "$SDK_PATH"
-            git checkout "$REF"
-            cargo build --locked -p revive-dev-node --bin revive-dev-node --release
-          fi
-        else
-          cd "$SDK_PATH"
-          git checkout "$REF"
-          cargo build --locked -p revive-dev-node --bin revive-dev-node --release
-        fi
+        
+        # Clone with sparse checkout to get only the revive-node directory
+        git clone --depth 1 https://github.com/paritytech/polkadot-sdk
+        cd polkadot-sdk
+        git fetch --depth 1 origin ${{ inputs.polkadot-sdk-ref }}
+        git checkout ${{ inputs.polkadot-sdk-ref }}
 
-    - name: Start processes
-      id: start
+        echo "✅ revive-node cloned successfully"
+
+
+    - name: Cache build artifacts
+      id: build-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          polkadot-sdk/runtime/revive/target/release
+          polkadot-sdk/runtime/revive/target/wbuild
+          polkadot-sdk/runtime/eth-rpc/target/release
+          polkadot-sdk/runtime/eth-rpc/target/wbuild
+        key: |
+          revive-node-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}${{ inputs.cache-key-suffix }}
+          eth-rpc-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}${{ inputs.cache-key-suffix }}
+
+        restore-keys: |
+          revive-node-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}-
+          eth-rpc-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('https://github.com/paritytech/polkadot-sdk') }}-${{ inputs.polkadot-sdk-ref }}-${{ inputs.rust-version }}-
+
+    - name: Build revive-dev-node
+      if: steps.build-cache.outputs.cache-hit != 'true'
+      working-directory: polkadot-sdk/runtime/revive
       shell: bash
       run: |
-        nohup "${{ inputs.sdk-path }}"/target/release/revive-dev-node --dev > revive-node.log 2>&1 &
-        echo $! > revive-node.pid
-        echo "revive_pid=$(cat revive-node.pid)" >> $GITHUB_OUTPUT
+        echo "🔨 Building revive-dev-node..."
+        echo "📊 Available disk space:"
+        df -h
+        
+        # Set build optimizations
+        export CARGO_PROFILE_RELEASE_LTO=thin
+        export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+        
+        # Build with progress and error handling
+        cargo build -p revive-dev-node --bin revive-dev-node --release
+        cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release
 
+        echo "✅ Build completed successfully"
+        
+        echo "📊 Final disk space:"
+        df -h
 
+    - name: Verify build artifacts
+      shell: bash
+      run: |
+        echo "🔍 Verifying build artifacts..."
+        
+        RUNTIME_PATH="${{ steps.setup.outputs.revive-node-path }}"
+        
+        # Check runtime
+        if [ ! -f "$REVIVE_NODE_PATH" ]; then
+          echo "❌ Runtime WASM not found at: $REVIVE_NODE_PATH"
+          echo "🔍 Available runtime files:"
+          find polkadot-sdk/runtime/revive/target -name "*.wasm" -type f || echo "No WASM files found"
+          exit 1
+        fi
+        
+        # Check file sizes
+        REVIVE_NODE_SIZE=$(du -h "$RUNTIME_PATH" | cut -f1)
+        
+        echo "✅ revive-node verified: $RUNTIME_SIZE"

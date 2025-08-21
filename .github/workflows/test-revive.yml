@@ -1,0 +1,20 @@
+name: Setup Revive Node
+
+on: [workflow_dispatch]
+
+jobs:
+  setup-revive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+    
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Setup Revive Node
+        uses: ./.github/actions/setup-revive-node
+        with:
+          rust-version: "1.86"
+          polkadot-sdk-ref: "8e2b6f742a38bb13688e12abacded0aab2dbbb23"
+          cache-key-suffix: "-local-test"
