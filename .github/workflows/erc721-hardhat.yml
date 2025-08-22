@@ -51,7 +51,7 @@ jobs:
         run: npm install --force
 
       - name: Make binaries executable
-        run: chmod +x hardhat-examples/binaries/revive-dev-node hardhat-examples/binaries/eth-rpc
+        run: chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
     
       - name: Compile contracts
         run: npx hardhat compile
