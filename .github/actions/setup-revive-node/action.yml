@@ -95,8 +95,8 @@ runs:
     - name: Copy (overwrite) binaries
       shell: bash
       run: |
-        cp polkadot-sdk/target/release/revive-dev-node ../../binaries/revive-dev-node
-        cp polkadot-sdk/target/release/eth-rpc ../../binaries/eth-rpc
+        cp polkadot-sdk/target/release/revive-dev-node ${{ github.workspace }}/hardhat-examples/binaries/revive-dev-node
+        cp polkadot-sdk/target/release/eth-rpc ${{ github.workspace }}/hardhat-examples/binaries/eth-rpc
 
     - name: Verify build artifacts
       shell: bash
