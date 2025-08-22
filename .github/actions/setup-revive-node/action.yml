@@ -92,6 +92,12 @@ runs:
         echo "📊 Final disk space:"
         df -h
 
+    - name: Copy (overwrite) binaries
+      shell: bash
+      run: |
+        cp polkadot-sdk/target/release/revive-dev-node ../../binaries/revive-dev-node
+        cp polkadot-sdk/target/release/eth-rpc ../../binaries/eth-rpc
+
     - name: Verify build artifacts
       shell: bash
       run: |

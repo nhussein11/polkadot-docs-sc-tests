@@ -4,6 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
+  setup-revive-node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup revive node
+        uses: ./.github/actions/setup-revive-node
+
   build-and-test:
     runs-on: ubuntu-latest
     defaults:
@@ -19,6 +27,20 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
+      - name: Test binaries
+        run: |
+            echo "Testing revive-dev-node..."
+            ../binaries/revive-dev-node --version || echo "revive-dev-node failed"
+            echo "Testing eth-rpc..."
+            ../binaries/eth-rpc --version || echo "eth-rpc failed"
+            
+            # Check binary info
+            file ../binaries/revive-dev-node
+            file ../binaries/eth-rpc
+            
+            # Check for missing dependencies
+            ldd ../binaries/revive-dev-node || true
+            ldd ../binaries/eth-rpc || true
     
       - name: Ensure binaries
         run: |
@@ -37,11 +59,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install --force
-
+    
       - name: Compile contracts
         run: npx hardhat compile
 
       - name: Run tests
         run: DEBUG=hardhat:* npx hardhat test
-
-
