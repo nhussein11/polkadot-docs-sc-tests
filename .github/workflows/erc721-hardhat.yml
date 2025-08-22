@@ -19,6 +19,13 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
+    
+      - name: Test binaries
+        run: |
+          echo "Testing revive-dev-node..."
+          timeout 10s ../binaries/revive-dev-node --version || echo "revive-dev-node failed or timed out"
+          echo "Testing eth-rpc..."
+          timeout 10s ../binaries/eth-rpc --help || echo "eth-rpc failed or timed out"
 
       - name: Ensure binaries
         run: |
