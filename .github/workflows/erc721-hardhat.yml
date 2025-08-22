@@ -22,10 +22,10 @@ jobs:
 
       - name: Ensure binaries
         run: |
-          ls -la ../../binaries/
-          chmod +x ../../binaries/revive-dev-node ../../binaries/eth-rpc
+          ls -la ./binaries/
+          chmod +x ./binaries/revive-dev-node ./binaries/eth-rpc
           echo "Binaries are executable"
-          ls -la ../../binaries/
+          ls -la ./binaries/
 
       - name: Install dependencies
         run: npm install --force
