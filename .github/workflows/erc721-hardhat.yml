@@ -27,13 +27,13 @@ jobs:
           # show current directory contents
           ls -la
           # show binaries directory
-          ls -la ./binaries/
+          ls -la ../binaries/
           # make binaries executable
-          chmod +x ./binaries/revive-dev-node ./binaries/eth-rpc
-          ls -la ./binaries/
-          chmod +x ./binaries/revive-dev-node ./binaries/eth-rpc
+          chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
+          ls -la ../binaries/
+          chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
           echo "Binaries are executable"
-          ls -la ./binaries/
+          ls -la ../binaries/
 
       - name: Install dependencies
         run: npm install --force
