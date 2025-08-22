@@ -15,6 +15,13 @@ jobs:
           rust-version: "1.86"
           polkadot-sdk-ref: "8e2b6f742a38bb13688e12abacded0aab2dbbb23"
           cache-key-suffix: "-local-test"
+      - name: Upload revive binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: revive-binaries
+          path: hardhat-examples/binaries/*
+          if-no-files-found: error
+          retention-days: 1
 
 
   build-and-test:
@@ -26,6 +33,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download revive binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: revive-binaries
+          path: hardhat-examples/binaries
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
