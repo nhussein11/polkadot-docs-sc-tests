@@ -20,19 +20,20 @@ jobs:
           cache: npm
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
     
-      - name: Test binaries
-        run: |
-          echo "Testing revive-dev-node..."
-          timeout 10s ../binaries/revive-dev-node --version || echo "revive-dev-node failed or timed out"
-          echo "Testing eth-rpc..."
-          timeout 10s ../binaries/eth-rpc --help || echo "eth-rpc failed or timed out"
-
       - name: Ensure binaries
         run: |
-          ls -la ../binaries/
-          chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
+          # show current directory
+          pwd
+          # show current directory contents
+          ls -la
+          # show binaries directory
+          ls -la ./binaries/
+          # make binaries executable
+          chmod +x ./binaries/revive-dev-node ./binaries/eth-rpc
+          ls -la ./binaries/
+          chmod +x ./binaries/revive-dev-node ./binaries/eth-rpc
           echo "Binaries are executable"
-          ls -la ../binaries/
+          ls -la ./binaries/
 
       - name: Install dependencies
         run: npm install --force
