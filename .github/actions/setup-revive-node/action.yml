@@ -70,7 +70,7 @@ runs:
           target-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Setup sccache
-      uses: mozilla-actions/sccache-action@97f4987191bb3fb0fe56b6755b1e0b3b1d3dfc2b
+      uses: mozilla-actions/sccache-action@v0.0.3
     
     - name: Enable sccache
       shell: bash
