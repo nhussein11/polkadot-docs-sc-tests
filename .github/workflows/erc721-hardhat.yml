@@ -24,7 +24,7 @@ jobs:
         run: chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --force
 
       - name: Compile contracts
         run: npx hardhat compile
