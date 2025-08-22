@@ -1,10 +1,19 @@
-name: ERC721 Hardhat Test
+name: ERC721 Hardhat CI
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup-revive-node:
+    timeout-minutes: 40
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -16,6 +25,7 @@ jobs:
           rust-version: "1.86"
           polkadot-sdk-ref: "8e2b6f742a38bb13688e12abacded0aab2dbbb23"
           cache-key-suffix: "-local-test"
+          binaries-dir: "hardhat-examples/binaries"
 
       - name: Upload revive binaries
         uses: actions/upload-artifact@v4
@@ -27,6 +37,7 @@ jobs:
 
   build-and-test:
     needs: setup-revive-node
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,6 +50,8 @@ jobs:
         with:
           name: revive-binaries
           path: hardhat-examples/binaries
+      - name: Make binaries executable
+        run: chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,7 +61,7 @@ jobs:
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
     
       - name: Install dependencies
-        run: npm install --force
+        run: npm ci
 
       - name: Make binaries executable
         run: chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc

@@ -13,15 +13,11 @@ inputs:
     description: "Suffix for build cache key"
     required: false
     default: ""
+  binaries-dir:
+    description: "Directory (relative to repo root) to place built binaries"
+    required: false
+    default: "hardhat-examples/binaries"
 
-
-outputs:
-  revive-node-path:
-    description: "Path to cloned revive-node"
-    value: ${{ steps.setup.outputs.revive-node-path }}
-  cache-hit:
-    description: "Whether build cache was hit"
-    value: ${{ steps.build-cache.outputs.cache-hit }}
 
 runs:
   using: "composite"
@@ -31,13 +27,16 @@ runs:
       with:
         rust-version: ${{ inputs.rust-version }}
 
-    - name: Setup template and paths
-      id: setup
-      shell: bash
-      run: |
-        REVIVE_NODE_PATH="${GITHUB_WORKSPACE}/revive-node"
-        
-        echo "revive-node-path=$REVIVE_NODE_PATH" >> $GITHUB_OUTPUT
+    - name: Cache cargo registry and git
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: cargo-home-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-${{ hashFiles('polkadot-sdk/**/Cargo.lock') }}${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          cargo-home-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-
+          cargo-home-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Clone revive-node
       shell: bash
@@ -70,6 +69,14 @@ runs:
           target-${{ runner.os }}-${{ runner.arch }}-${{ inputs.rust-version }}-
           target-${{ runner.os }}-${{ runner.arch }}-
 
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@97f4987191bb3fb0fe56b6755b1e0b3b1d3dfc2b
+    
+    - name: Enable sccache
+      shell: bash
+      run: |
+        echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+
     - name: Build revive-dev-node
       if: steps.build-cache.outputs.cache-hit != 'true'
       working-directory: polkadot-sdk/
@@ -84,8 +91,8 @@ runs:
         export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
         
         # Build with progress and error handling
-        cargo build -p revive-dev-node --bin revive-dev-node --release
-        cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release
+        cargo build -p revive-dev-node --bin revive-dev-node --release --locked
+        cargo build -p pallet-revive-eth-rpc --bin eth-rpc --release --locked
 
         echo "✅ Build completed successfully"
         
@@ -95,29 +102,9 @@ runs:
     - name: Copy (overwrite) binaries
       shell: bash
       run: |
-        DEST_DIR="${{ github.workspace }}/hardhat-examples/binaries"
+        DEST_DIR="${{ github.workspace }}/${{ inputs.binaries-dir }}"
         mkdir -p "$DEST_DIR"
         cp polkadot-sdk/target/release/revive-dev-node "$DEST_DIR/revive-dev-node"
         cp polkadot-sdk/target/release/eth-rpc "$DEST_DIR/eth-rpc"
         chmod +x "$DEST_DIR/revive-dev-node" "$DEST_DIR/eth-rpc"
         ls -la "$DEST_DIR"
-
-    - name: Verify build artifacts
-      shell: bash
-      run: |
-        echo "🔍 Verifying build artifacts..."
-        
-        RUNTIME_PATH="${{ steps.setup.outputs.revive-node-path }}"
-        
-        # # Check runtime
-        # if [ ! -f "$REVIVE_NODE_PATH" ]; then
-        #   echo "❌ Runtime WASM not found at: $REVIVE_NODE_PATH"
-        #   echo "🔍 Available runtime files:"
-        #   find polkadot-sdk/runtime/revive/target -name "*.wasm" -type f || echo "No WASM files found"
-        #   exit 1
-        # fi
-        
-        # # Check file sizes
-        # REVIVE_NODE_SIZE=$(du -h "$RUNTIME_PATH" | cut -f1)
-        
-        echo "✅ revive-node verified: $RUNTIME_SIZE"
