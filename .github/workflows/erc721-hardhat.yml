@@ -1,4 +1,4 @@
-name: ERC721 Hardhat CI
+name: ERC721 Hardhat Test
 
 on:
   workflow_dispatch:
@@ -9,12 +9,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup revive node
         uses: ./.github/actions/setup-revive-node
         with:
           rust-version: "1.86"
           polkadot-sdk-ref: "8e2b6f742a38bb13688e12abacded0aab2dbbb23"
           cache-key-suffix: "-local-test"
+
       - name: Upload revive binaries
         uses: actions/upload-artifact@v4
         with:
@@ -22,7 +24,6 @@ jobs:
           path: hardhat-examples/binaries/*
           if-no-files-found: error
           retention-days: 1
-
 
   build-and-test:
     needs: setup-revive-node
@@ -45,36 +46,7 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
-      - name: Test binaries
-        run: |
-            echo "Testing revive-dev-node..."
-            ../binaries/revive-dev-node --version || echo "revive-dev-node failed"
-            echo "Testing eth-rpc..."
-            ../binaries/eth-rpc --version || echo "eth-rpc failed"
-            
-            # Check binary info
-            file ../binaries/revive-dev-node
-            file ../binaries/eth-rpc
-            
-            # Check for missing dependencies
-            ldd ../binaries/revive-dev-node || true
-            ldd ../binaries/eth-rpc || true
     
-      - name: Ensure binaries
-        run: |
-          # show current directory
-          pwd
-          # show current directory contents
-          ls -la
-          # show binaries directory
-          ls -la ../binaries/
-          # make binaries executable
-          chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
-          ls -la ../binaries/
-          chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
-          echo "Binaries are executable"
-          ls -la ../binaries/
-
       - name: Install dependencies
         run: npm install --force
     
@@ -82,4 +54,4 @@ jobs:
         run: npx hardhat compile
 
       - name: Run tests
-        run: DEBUG=hardhat:* npx hardhat test
+        run: npx hardhat test
