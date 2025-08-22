@@ -18,6 +18,7 @@ jobs:
 
 
   build-and-test:
+    needs: setup-revive-node
     runs-on: ubuntu-latest
     defaults:
       run:
