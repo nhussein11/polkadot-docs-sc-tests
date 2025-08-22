@@ -1,7 +1,7 @@
 name: ERC721 Hardhat CI
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -20,8 +20,12 @@ jobs:
           cache: npm
           cache-dependency-path: hardhat-examples/erc721-hardhat/package-lock.json
 
-      - name: Ensure binaries are executable
-        run: chmod +x ../binaries/revive-dev-node ../binaries/eth-rpc
+      - name: Ensure binaries
+        run: |
+          ls -la ../../binaries/
+          chmod +x ../../binaries/revive-dev-node ../../binaries/eth-rpc
+          echo "Binaries are executable"
+          ls -la ../../binaries/
 
       - name: Install dependencies
         run: npm install --force
@@ -30,5 +34,6 @@ jobs:
         run: npx hardhat compile
 
       - name: Run tests
-        run: npx hardhat test
+        run: DEBUG=hardhat:* npx hardhat test
+
 
