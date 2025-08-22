@@ -95,8 +95,12 @@ runs:
     - name: Copy (overwrite) binaries
       shell: bash
       run: |
-        cp polkadot-sdk/target/release/revive-dev-node ${{ github.workspace }}/hardhat-examples/binaries/revive-dev-node
-        cp polkadot-sdk/target/release/eth-rpc ${{ github.workspace }}/hardhat-examples/binaries/eth-rpc
+        DEST_DIR="${{ github.workspace }}/hardhat-examples/binaries"
+        mkdir -p "$DEST_DIR"
+        cp polkadot-sdk/target/release/revive-dev-node "$DEST_DIR/revive-dev-node"
+        cp polkadot-sdk/target/release/eth-rpc "$DEST_DIR/eth-rpc"
+        chmod +x "$DEST_DIR/revive-dev-node" "$DEST_DIR/eth-rpc"
+        ls -la "$DEST_DIR"
 
     - name: Verify build artifacts
       shell: bash
